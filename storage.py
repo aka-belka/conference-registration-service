@@ -1,6 +1,7 @@
 import json
 import os
 from typing import Any
+from models import Event, Participant, Ticket
 
 DATA_DIR = "data"
 
@@ -30,25 +31,36 @@ def _save_json(filename: str, data: Any) -> None:
         json.dump(data, file, ensure_ascii=False, indent=2)
 
 
-def load_participants() -> list[dict]:
-    return _load_json("participants.json", [])
+def load_participants() -> list[Participant]:
+    raw = _load_json("participants.json", [])
+    return [Participant.from_data(item) for item in raw]
 
 
-def save_participants(participants: list[dict]) -> None:
-    _save_json("participants.json", participants)
+def save_participants(participants: list[Participant]) -> None:
+    _save_json("participants.json", [p.to_data() for p in participants])
 
 
-def load_events() -> list[dict]:
-    return _load_json("events.json", [])
+def load_events() -> list[Event]:
+    raw = _load_json("events.json", [])
+    return [Event.from_data(item) for item in raw]
 
 
-def save_events(events: list[dict]) -> None:
-    _save_json("events.json", events)
+def save_events(events: list[Event]) -> None:
+    _save_json("events.json", [e.to_data() for e in events])
 
 
-def load_tickets() -> list[dict]:
-    return _load_json("tickets.json", [])
+def load_tickets(
+    events: list[Event],
+    participants: list[Participant],
+) -> list[Ticket]:
+    raw = _load_json("tickets.json", [])
+    tickets: list[Ticket] = []
+    for item in raw:
+        ticket = Ticket.from_data(item, events, participants)
+        if ticket is not None:
+            tickets.append(ticket)
+    return tickets
 
 
-def save_tickets(tickets: list[dict]) -> None:
-    _save_json("tickets.json", tickets)
+def save_tickets(tickets: list[Ticket]) -> None:
+    _save_json("tickets.json", [t.to_data() for t in tickets])
