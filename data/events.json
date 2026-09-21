@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "title": "Хакатон MAX",
+    "date": "20.11.2026",
+    "max_seats": 100,
+    "registered": 1
+  },
+  {
+    "id": 2,
+    "title": "Yandex connect",
+    "date": "25.11.2026",
+    "max_seats": 50,
+    "registered": 1
+  }
+]

@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "event_id": 1,
+    "participant_id": 1,
+    "status": "забронирован",
+    "number": "TICKET-0001"
+  },
+  {
+    "id": 2,
+    "event_id": 2,
+    "participant_id": 2,
+    "status": "оплачен",
+    "number": "TICKET-0002"
+  }
+]
