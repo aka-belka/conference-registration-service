@@ -19,6 +19,8 @@ from django.urls import path, include
 
 from events import views as events_views
 
+handler404 = "homepage.views.page_not_found"
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("", include("homepage.urls")),
