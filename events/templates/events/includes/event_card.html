@@ -1,0 +1,22 @@
+<article class="card item-card mb-3">
+    <div class="card-body">
+        <h2 class="card-title">
+            {{ event.title|default:"Без названия" }}
+        </h2>
+
+        <p class="card-text">
+            Дата: {{ event.date }}
+        </p>
+
+        <p class="card-text">
+            Вместимость: {{ event.max_seats }} мест
+        </p>
+
+        <a
+            href="{% url 'events:event_detail' event.id %}"
+            class="btn btn-primary"
+        >
+            Подробнее
+        </a>
+    </div>
+</article>

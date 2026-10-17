@@ -1,0 +1,14 @@
+{% extends "base.html" %} 
+
+{% block title %} 
+    Главная - Сервис регистрации
+{% endblock %} 
+
+{% block content %} 
+    <h1 class="display-4">Сервис регистрации участников конференции</h1>
+    <p class="lead">Управление участниками, мероприятиями и билетами.</p>
+    <p>Основные разделы:</p>
+    <a href="{% url 'participants:participants' %}" class="btn btn-primary me-2">Участники</a>
+    <a href="{% url 'events:events' %}" class="btn btn-success me-2">Мероприятия</a>
+    <a href="{% url 'tickets' %}" class="btn btn-secondary">Билеты</a>
+{% endblock %} 

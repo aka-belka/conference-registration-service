@@ -1,0 +1,18 @@
+<article class="card item-card mb-3">
+    <div class="card-body">
+        <h2 class="card-title">
+            {{ participant.name }}
+        </h2>
+
+        <p class="card-text">
+            E-mail: {{ participant.email }}
+        </p>
+
+        <a
+            href="{% url 'participants:participant_detail' participant.id %}"
+            class="btn btn-primary"
+        >
+            Подробнее
+        </a>
+    </div>
+</article>

@@ -1,0 +1,21 @@
+{% extends "base.html" %} 
+ 
+{% block title %} 
+    Мероприятия - Сервис регистрации
+{% endblock %} 
+ 
+{% block content %} 
+    <h1>Мероприятия</h1> 
+    <p> 
+        Всего мероприятий: {{ events|length }} 
+    </p> 
+    <ul class="list-group"> 
+        {% for event in events %} 
+            {% include "events/includes/event_card.html" %} 
+        {% empty %} 
+            <li class="list-group-item"> 
+                Мероприятия не найдены. 
+            </li> 
+        {% endfor %} 
+    </ul> 
+{% endblock %} 

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %} 
+    {% if participant %} 
+        {{ participant.name }} – Сервис регистрации
+    {% else %} 
+        Участник не найден – Сервис регистрации
+    {% endif %} 
+{% endblock %} 
+
+{% block content %} 
+    {% if participant %} 
+        <div class="card"> 
+            <div class="card-body"> 
+                <h1 class="card-title"> 
+                    {{ participant.name }} 
+                </h1> 
+
+                <p class="card-text"> 
+                    <strong>ID:</strong> {{ participant.id }} 
+                </p> 
+                <p class="card-text">
+                    <strong>E-mail:</strong> {{ participant.email }}
+                </p>
+            </div> 
+        </div> 
+    {% else %} 
+        <h1 class="text-danger"> 
+            Участник не найден 
+        </h1> 
+        <p> 
+            Участник с указанным идентификатором отсутствует. 
+        </p> 
+    {% endif %} 
+
+    <a  
+        href="{% url 'participants:participants' %}" 
+        class="btn btn-outline-secondary mt-3" 
+    >
+        ← к списку участников 
+    </a> 
+{% endblock %} 

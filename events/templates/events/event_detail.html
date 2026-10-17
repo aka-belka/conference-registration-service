@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %} 
+    {% if event %} 
+        {{ event.title }} – Сервис регистрации
+    {% else %} 
+        Мероприятие не найдено – Сервис регистрации
+    {% endif %} 
+{% endblock %} 
+
+{% block content %} 
+    {% if event %} 
+        <div class="card"> 
+            <div class="card-body"> 
+                <h1 class="card-title"> 
+                    {{ event.title }} 
+                </h1> 
+
+                <p class="card-text"> 
+                    <strong>ID:</strong> {{ event.id }} 
+                </p> 
+                <p class="card-text">
+                    <strong>Дата:</strong> {{ event.date }}
+                </p>
+
+                <p class="card-text">
+                    <strong>Мест:</strong> {{ event.registered }}/{{ event.max_seats }}
+                </p>
+            </div> 
+        </div> 
+    {% else %} 
+        <h1 class="text-danger"> 
+            Мероприятие не найдено 
+        </h1> 
+        <p> 
+            Мероприятие с указанным идентификатором отсутствует. 
+        </p> 
+    {% endif %} 
+
+    <a  
+        href="{% url 'events:events' %}" 
+        class="btn btn-outline-secondary mt-3" 
+    >
+        ← к списку мероприятий 
+    </a> 
+{% endblock %} 

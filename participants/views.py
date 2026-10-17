@@ -1,47 +1,25 @@
-from django.http import HttpResponse
+from django.shortcuts import render
 
-from homepage.views import page
 from storage import load_participants
 
 
 def participants(request):
-    items = ""
-    for p in load_participants():
-        text = f"{p.name} — {p.email}"
-        items += f'<li class="list-group-item">{text}</li>'
-    content = f"""
-    <h1>Участники</h1>
-    <ul class="list-group">{items}</ul>
-    """
-    return HttpResponse(page("Участники", content))
+    template = 'participants/participant_list.html'
+    participants_list = load_participants()
+    context = {
+        "participants": participants_list,
+    }
+    return render(request, template, context)
 
 
 def participant_detail(request, participant_id: int):
+    template = 'participants/participant_detail.html'
     participants_list = load_participants()
     participant = next(
         (p for p in participants_list if p.id == participant_id), None
     )
-    if participant is None:
-        content = """
-        <h1 class="text-danger">Участник не найден</h1>
-        <a href="/participants/" class="btn btn-outline-secondary">
-            к списку участников
-        </a>
-        """
-        return HttpResponse(
-            page("Участник не найден", content), status=404
-        )
 
-    content = f"""
-    <div class="card">
-        <div class="card-body">
-            <h5 class="card-title">{participant.name}</h5>
-            <p class="card-text"><strong>ID:</strong> {participant.id}</p>
-            <p class="card-text"><strong>Email:</strong> {participant.email}</p>
-            <a href="/participants/" class="btn btn-outline-secondary">
-                к списку участников
-            </a>
-        </div>
-    </div>
-    """
-    return HttpResponse(page(participant.name, content))
+    context = {
+        "participant": participant,
+    }
+    return render(request, template, context, status=404 if participant is None else 200)

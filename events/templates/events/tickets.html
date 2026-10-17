@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Билеты – Сервис регистрации
+{% endblock %}
+
+{% block content %}
+    <h1>Билеты</h1>
+
+    <p>Всего билетов: {{ tickets|length }}</p>
+
+    <ul class="list-group">
+        {% for ticket in tickets %}
+            <li class="list-group-item d-flex justify-content-between">
+                <span>
+                    {{ ticket.number }}:
+                    {{ ticket.participant.name }} → {{ ticket.event.title }}
+                </span>
+                {% include "events/includes/ticket_status.html" %}
+            </li>
+        {% empty %}
+            <li class="list-group-item">Билеты не найдены.</li>
+        {% endfor %}
+    </ul>
+{% endblock %}
