@@ -22,7 +22,8 @@
 - CSS3;
 - JavaScript;
 - Bootstrap 5.3;
-- JSON для хранения данных;
+- SQLite;
+- JSON;
 - Git;
 - pytest;
 - flake8.
@@ -40,8 +41,14 @@
 Для предметной области реализованы собственные Python-классы
 `Participant`, `Event` и `Ticket` (пакет `models/`).
 
-На текущем этапе данные хранятся в JSON-файлах. Django ORM и база данных
-приложения пока не используются.
+На этапе ПР7 данные перенесены из JSON-файлов в базу данных SQLite (data/conference.sqlite).
+
+Структура базы данных:
+
+- Таблица events: id (INTEGER, PRIMARY KEY), title (TEXT), date (TEXT), max_seats (INTEGER), registered (INTEGER).
+- Таблица participants: id (INTEGER, PRIMARY KEY), name (TEXT), email (TEXT).
+- Таблица tickets: id (INTEGER, PRIMARY KEY), event_id (INTEGER, FOREIGN KEY), participant_id (INTEGER, FOREIGN KEY), status (TEXT), number (TEXT).
+- Файл схемы: sql/schema.sql. Внешние ключи обеспечивают связь билетов с мероприятиями и участниками.
 
 ## 4. Структура проекта
 
@@ -109,10 +116,20 @@ conference-registration-service/
 │   ├── events.py
 │   └── tickets.py
 │
-├── data/                      # JSON-хранилище
-│   ├── participants.json
-│   ├── events.json
-│   └── tickets.json
+├── sql/                       # SQL-скрипты (ПР7)
+│   ├── schema.sql             # Создание таблиц
+│   └── queries.sql            # 10 SQL-запросов
+│
+├── db/                        # Работа с БД (ПР7)
+│   ├── __init__.py
+│   ├── database.py            # Подключение к SQLite
+│   └── import_json.py         # Перенос данных из JSON
+│
+├── data/                      
+│   ├── conference.sqlite      # Файл базы данных (ПР7)
+│   ├── participants.json      # Исходные данные
+│   ├── events.json            # Исходные данные
+│   └── tickets.json           # Исходные данные
 │
 └── tests/                     # тесты предметной области
     ├── test_participants.py
@@ -270,18 +287,14 @@ homepage/static/homepage/
 
 ## 8. Хранение данных
 
-На текущем этапе данные приложения хранятся в JSON-файлах:
+Данные приложения хранятся в реляционной базе данных SQLite: data/conference.sqlite.
 
-- `data/participants.json`;
-- `data/events.json`;
-- `data/tickets.json`.
+- Подключение к БД: db/database.py (с включением PRAGMA foreign_keys = ON).
+- Перенос данных: скрипт db/import_json.py (использует executemany() и параметры ?).
+- SQL-запросы проекта: файл sql/queries.sql (включает SELECT, WHERE, JOIN, COUNT, GROUP BY, HAVING).
+- В Django-представлениях данные получаются через sqlite3.connect() и conn.row_factory = sqlite3.Row.
 
-Загрузка данных выполняется функциями модуля `storage.py`.
-Предметные объекты создаются на основе собственных Python-классов
-из пакета `models/`.
-
-**Django ORM на текущем этапе не используется.** Работа с моделями Django
-и базой данных относится к следующим практическим работам.
+Django ORM на текущем этапе не используется. JSON-файлы сохранены как исходные данные.
 
 ## 9. Основные модули
 
@@ -370,7 +383,6 @@ git push
 
 - предметные классы `Participant`, `Event`, `Ticket`;
 - консольный интерфейс;
-- хранение данных в JSON;
 - Django-проект и три Django-приложения (`homepage`, `participants`, `events`);
 - веб-представления для основных сущностей;
 - Django Template Language;
@@ -383,17 +395,17 @@ git push
 - именованные URL и пространства имён;
 - статические файлы (CSS, JavaScript, изображение);
 - собственное оформление интерфейса;
-- тесты предметной области.
-
-Формы Django, модели Django ORM и работа с базой данных в текущей версии
-проекта не реализованы.
+- тесты предметной области;
+- база данных SQLite (`conference.sqlite`);
+- таблицы `events`, `participants`, `tickets` с внешними ключами;
+- скрипт импорта данных из JSON в SQLite;
+- 10 SQL-запросов в файле `queries.sql`;
+- получение данных из SQLite в Django-представлениях;
+- страница поиска мероприятий по дате;
+- страница статистики по билетам.
 
 ## 15. Дальнейшее развитие
 
-Следующие этапы развития проекта предполагают переход от хранения данных
-в JSON к использованию базы данных и Django ORM, а также реализацию
-форм Django и дальнейшее расширение веб-интерфейса.
-
-В дальнейшем веб-приложение может быть дополнено операциями создания,
+На текущем этапе реализован слой базы данных SQLite и получение данных из неё в Django-представлениях. Следующие этапы развития проекта предполагают подключение базы данных к Django с использованием **Django ORM** (модели, миграции), а также реализацию форм Django для добавления и редактирования данных. В дальнейшем веб-приложение может быть дополнено операциями создания,
 изменения и удаления объектов, обработкой пользовательского ввода,
 валидацией данных и API.
