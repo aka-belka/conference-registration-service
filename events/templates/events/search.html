@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}
+    Поиск мероприятий – Сервис регистрации
+{% endblock %}
+{% block content %}
+    <h1>Поиск мероприятий по дате</h1>
+    <form method="get" class="mb-3">
+        <label for="date">Выберите дату:</label>
+        <input type="date" id="date" name="date" value="{{ search_date }}" required>
+        <button type="submit" class="btn btn-primary">Найти</button>
+    </form>
+
+    {% if search_date %}
+        <h3>Результаты на {{ search_date }}:</h3>
+        <ul class="list-group">
+            {% for event in events %}
+                <li class="list-group-item">{{ event.title }} (Мест: {{ event.max_seats }})</li>
+            {% empty %}
+                <li class="list-group-item">На эту дату мероприятий нет.</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+{% endblock %}

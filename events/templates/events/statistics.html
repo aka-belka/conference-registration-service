@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}
+    Статистика – Сервис регистрации
+{% endblock %}
+{% block content %}
+    <h1>Статистика по билетам</h1>
+    <ul class="list-group">
+        {% for item in statistics %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                {{ item.event_title }}
+                <span class="badge bg-primary rounded-pill">{{ item.tickets_count }} шт.</span>
+            </li>
+        {% empty %}
+            <li>Нет данных</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

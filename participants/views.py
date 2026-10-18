@@ -1,25 +1,34 @@
+import sqlite3
 from django.shortcuts import render
 
-from storage import load_participants
+DB_PATH = "data/conference.sqlite"
 
 
 def participants(request):
-    template = 'participants/participant_list.html'
-    participants_list = load_participants()
-    context = {
-        "participants": participants_list,
-    }
-    return render(request, template, context)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    participants_list = conn.execute("""
+        SELECT
+            id,
+            name,
+            email
+        FROM participants
+        ORDER BY name;
+    """).fetchall()
+    conn.close()
+    return render(request, "participants/participant_list.html", {"participants": participants_list})
 
 
 def participant_detail(request, participant_id: int):
-    template = 'participants/participant_detail.html'
-    participants_list = load_participants()
-    participant = next(
-        (p for p in participants_list if p.id == participant_id), None
-    )
-
-    context = {
-        "participant": participant,
-    }
-    return render(request, template, context, status=404 if participant is None else 200)
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    participant = conn.execute("""
+        SELECT
+            id,
+            name,
+            email
+        FROM participants
+        WHERE id = ?;
+    """, [participant_id]).fetchone()
+    conn.close()
+    return render(request, "participants/participant_detail.html", {"participant": participant})

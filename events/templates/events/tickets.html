@@ -13,8 +13,8 @@
         {% for ticket in tickets %}
             <li class="list-group-item d-flex justify-content-between">
                 <span>
-                    {{ ticket.number }}:
-                    {{ ticket.participant.name }} → {{ ticket.event.title }}
+                    {{ ticket.ticket_number }}:
+                    {{ ticket.participant_name }} → {{ ticket.event_title }}
                 </span>
                 {% include "events/includes/ticket_status.html" %}
             </li>

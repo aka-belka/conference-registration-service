@@ -1,6 +1,6 @@
-{% if ticket.status == "отменён" %}
+{% if ticket.ticket_status == "отменён" %}
     <span class="badge bg-secondary booking-status">Отменён</span>
-{% elif ticket.status == "оплачен" %}
+{% elif ticket.ticket_status == "оплачен" %}
     <span class="badge bg-success booking-status">Оплачен</span>
 {% else %}
     <span class="badge bg-primary booking-status">Забронирован</span>
