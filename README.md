@@ -11,12 +11,15 @@
 к информации через веб-интерфейс на Django.
 
 Проект развивается поэтапно: консольная версия приложения (ПР1–ПР3)
-дополнена веб-интерфейсом (ПР5), переведена на систему шаблонов Django (ПР6) и получила слой реляционного хранения данных SQLite (ПР7).
+дополнена веб-интерфейсом (ПР5), переведена на систему шаблонов Django (ПР6),
+получила слой реляционного хранения данных SQLite (ПР7) и переведена
+на Django ORM (ПР9).
 
 ## 2. Используемые технологии
 
 - Python 3;
 - Django 5.2;
+- Django ORM;
 - Django Template Language (DTL);
 - HTML5;
 - CSS3;
@@ -39,16 +42,24 @@
   на участника, статус (`забронирован`, `оплачен`, `отменён`), номер билета.
 
 Для предметной области реализованы собственные Python-классы
-`Participant`, `Event` и `Ticket` (пакет `models/`).
+`Participant`, `Event` и `Ticket` (пакет `models/`), а также Django-модели
+в приложениях `participants` и `events`.
 
-На этапе ПР7 данные перенесены из JSON-файлов в базу данных SQLite (data/conference.sqlite).
+### 3.1. Django-модели (ПР9)
 
-Структура базы данных:
+- `Participant` (`participants/models.py`): `name`, `email`.
+- `Event` (`events/models.py`): `title`, `date`, `max_seats`, `registered`.
+- `Ticket` (`events/models.py`): `event` (FK → `Event`), `participant`
+  (FK → `Participant`), `status`, `number`.
 
-- Таблица events: id (INTEGER, PRIMARY KEY), title (TEXT), date (TEXT), max_seats (INTEGER), registered (INTEGER).
-- Таблица participants: id (INTEGER, PRIMARY KEY), name (TEXT), email (TEXT).
-- Таблица tickets: id (INTEGER, PRIMARY KEY), event_id (INTEGER, FOREIGN KEY), participant_id (INTEGER, FOREIGN KEY), status (TEXT), number (TEXT).
-- Файл схемы: sql/schema.sql. Внешние ключи обеспечивают связь билетов с мероприятиями и участниками.
+Связи: `Ticket.event` → `Event`, `Ticket.participant` → `Participant`
+(ForeignKey, `on_delete=CASCADE`, `related_name='tickets'`).
+
+### 3.2. Исходная база данных (ПР7)
+
+На этапе ПР7 данные были перенесены из JSON-файлов в базу данных SQLite
+(`data/conference.sqlite`). Эта база сохранена как источник исходных данных
+и не используется представлениями после перехода на ORM.
 
 ## 4. Структура проекта
 
@@ -58,6 +69,7 @@ conference-registration-service/
 ├── README.md
 ├── requirements.txt
 ├── manage.py
+├── db.sqlite3 
 ├── main.py
 ├── storage.py
 ├── utils.py
@@ -90,6 +102,8 @@ conference-registration-service/
 │   └── views.py
 │
 ├── participants/              # приложение: участники
+│   ├── migrations/            # миграции (ПР9)
+│   ├── models.py              # модель Participant (ПР9)
 │   ├── templates/
 │   │   └── participants/
 │   │       ├── participant_list.html
@@ -100,6 +114,8 @@ conference-registration-service/
 │   └── views.py
 │
 ├── events/                    # приложение: мероприятия и билеты
+│   ├── migrations/            # миграции (ПР9)
+│   ├── models.py              # модели Event, Ticket (ПР9)
 │   ├── templates/
 │   │   └── events/
 │   │       ├── event_list.html
@@ -146,12 +162,17 @@ conference-registration-service/
 - `/participants/<id>/` — информация об участнике;
 - `/events/` — список мероприятий;
 - `/events/<id>/` — информация о мероприятии;
-- `/tickets/` — список билетов.
+- `/events/search_events/` — поиск мероприятий по названию и дате;
+- `/events/statistics/` — статистика по билетам;
+- `/tickets/` — список билетов;
+- `/events/tickets_paginated/` — список билетов с пагинацией;
+- `/events/tickets_active/` — активные билеты (без отменённых);
+- `/events/tickets_by_event_status/` — фильтрация билетов по мероприятию
+  и статусу.
 
 Для формирования страниц используются **Django-шаблоны**. Генерация HTML
 непосредственно в Python-коде веб-представлений не используется:
 view-функции подготавливают контекст и вызывают `render()`.
-
 ## 6. Django Template Language
 
 Шаблоны используют возможности Django Template Language.
@@ -254,12 +275,17 @@ return render(request, "participants/participant_list.html", context)
 {% url 'participants:participant_detail' participant.id %}
 {% url 'events:events' %}
 {% url 'events:event_detail' event.id %}
+{% url 'events:search_events' %}
+{% url 'events:statistics' %}
 {% url 'tickets' %}
+{% url 'events:tickets_paginated' %}
+{% url 'events:tickets_active' %}
+{% url 'events:tickets_by_event_status' %}
 ```
 
-Для приложений заданы `app_name` (`homepage`, `participants`, `events`),
-что позволяет обращаться к маршрутам через `app:name`. Ссылки в шаблонах
-формируются через `{% url %}`, жёстко заданные адреса не используются.
+Для приложений заданы app_name (homepage, participants, events),
+что позволяет обращаться к маршрутам через app:name. Ссылки в шаблонах
+формируются через {% url %}, жёстко заданные адреса не используются.
 
 ## 7. Статические файлы
 
@@ -287,24 +313,39 @@ homepage/static/homepage/
 
 ## 8. Хранение данных
 
-Данные приложения хранятся в реляционной базе данных SQLite: data/conference.sqlite.
+Данные приложения хранятся в реляционной базе данных SQLite: `db.sqlite3` (управляется Django ORM).
 
-- Подключение к БД: db/database.py (с включением PRAGMA foreign_keys = ON).
-- Перенос данных: скрипт db/import_json.py (использует executemany() и параметры ?).
-- SQL-запросы проекта: файл sql/queries.sql (включает SELECT, WHERE, JOIN, COUNT, GROUP BY, HAVING).
-- В Django-представлениях данные получаются через sqlite3.connect() и conn.row_factory = sqlite3.Row.
+- Модели: `Participant` (`participants/models.py`), `Event` и `Ticket` (`events/models.py`).
+- Связи: `Ticket.event` → `Event`, `Ticket.participant` → `Participant` (ForeignKey, `on_delete=CASCADE`, `related_name='tickets'`).
+- Миграции: `participants/migrations/`, `events/migrations/`.
+- Перенос данных из ПР7 (`data/conference.sqlite`) выполнен скриптом `db/migrate_to_orm.py`.
+- Представления получают данные через Django ORM (`objects.all()`, `filter()`, `exclude()`, `select_related()`, `annotate()`, `aggregate()`, `Paginator`).
+- Исходные JSON-файлы (`data/*.json`) и база ПР7 (`data/conference.sqlite`) сохранены как исходные данные.
+- SQL-слой ПР7 (`sql/schema.sql`, `sql/queries.sql`, `db/database.py`) остаётся в проекте как предыдущая реализация, но представления его больше не используют.
 
-Django ORM на текущем этапе не используется. JSON-файлы сохранены как исходные данные.
+## 8.1. ORM-запросы проекта (ПР9)
+В представлениях используются:
+
+- базовое получение: Event.objects.all(), get_object_or_404(Event, pk=...);
+- фильтрация: filter(date=...), filter(title__icontains=...), filter(event__title__icontains=...), exclude(status='отменён'), filter(status__in=[...]);
+- поиск: filter(title__icontains=...), filter(Q(name__icontains=...) | Q(email__icontains=...));
+- сортировка: order_by('date'), order_by('date', 'title'), order_by('event__date', 'participant__name');
+- работа со связями: select_related('event', 'participant'), event.tickets.all(), participant.tickets.all();
+- агрегирование и аннотирование: annotate(Count('tickets')), aggregate(Count, Avg, Min, Max), aggregate(Sum('registered'));
+- пагинация: Paginator(tickets_qs, 5) + get_page.
 
 ## 9. Основные модули
 
 - `storage.py` — загрузка и сохранение данных в JSON;
-- `models/` — классы предметной области `Participant`, `Event`, `Ticket`;
+- `models/` — классы предметной области Participant, Event, Ticket;
+- `participants/models.py` — Django-модель Participant (ПР9);
+- `events/models.py` — Django-модели Event, Ticket (ПР9);
+- `db/migrate_to_orm.py` — перенос данных из SQLite в Django ORM (ПР9);
 - `main.py` — консольная версия приложения (сохранена с ПР3);
 - `utils.py` — вспомогательные функции для консольного ввода;
 - `homepage/views.py` — представление главной страницы;
-- `participants/views.py` — обработка запросов по участникам;
-- `events/views.py` — обработка запросов по мероприятиям и билетам.
+- `participants/views.py` — обработка запросов по участникам (ORM);
+- `events/views.py` — обработка запросов по мероприятиям и билетам (ORM).
 
 ## 10. Тестирование
 
@@ -381,31 +422,34 @@ git push
 
 На текущем этапе проект содержит:
 
-- предметные классы `Participant`, `Event`, `Ticket`;
+- предметные классы Participant, Event, Ticket (пакет models/);
 - консольный интерфейс;
-- Django-проект и три Django-приложения (`homepage`, `participants`, `events`);
-- веб-представления для основных сущностей;
+- Django-проект и три Django-приложения (homepage, participants, events);
+- Django-модели Participant, Event, Ticket и связи между ними;
+- миграции (participants/migrations/, events/migrations/);
+- перенос данных из data/conference.sqlite в db.sqlite3 (скрипт db/migrate_to_orm.py);
+- веб-представления для основных сущностей на Django ORM;
 - Django Template Language;
 - наследование шаблонов;
-- базовый шаблон `base.html`;
-- блоки `{% block %}`;
-- включаемые шаблоны через `{% include %}`;
+- базовый шаблон base.html;
+- блоки {% block %};
+- включаемые шаблоны через {% include %};
 - циклы и условия;
 - фильтры шаблонов;
 - именованные URL и пространства имён;
 - статические файлы (CSS, JavaScript, изображение);
 - собственное оформление интерфейса;
 - тесты предметной области;
-- база данных SQLite (`conference.sqlite`);
-- таблицы `events`, `participants`, `tickets` с внешними ключами;
-- скрипт импорта данных из JSON в SQLite;
-- 10 SQL-запросов в файле `queries.sql`;
-- получение данных из SQLite в Django-представлениях;
-- страница поиска мероприятий по дате;
-- страница статистики по билетам.
+- ORM-запросы: получение наборов и отдельных объектов, фильтрация,
+поиск, сортировка, работа со связями, агрегирование, пагинация;
+- страница поиска мероприятий по названию и дате;
+- страница статистики по билетам со сводными показателями;
+- страница билетов с пагинацией;
+- страница активных билетов (без отменённых);
+- страница фильтрации билетов по мероприятию и статусу;
+- SQL-слой ПР7 (sql/schema.sql, sql/queries.sql, db/database.py)
+сохранён как предыдущая реализация.
 
 ## 15. Дальнейшее развитие
 
-На текущем этапе реализован слой базы данных SQLite и получение данных из неё в Django-представлениях. Следующие этапы развития проекта предполагают подключение базы данных к Django с использованием **Django ORM** (модели, миграции), а также реализацию форм Django для добавления и редактирования данных. В дальнейшем веб-приложение может быть дополнено операциями создания,
-изменения и удаления объектов, обработкой пользовательского ввода,
-валидацией данных и API. 
+На текущем этапе слой доступа к данным переведён на Django ORM: модели, миграции, ORM-запросы (фильтрация, поиск, сортировка, агрегация, пагинация). Следующие этапы предполагают реализацию форм Django для создания и редактирования записей, обработку пользовательского ввода, валидацию данных и, возможно, API.

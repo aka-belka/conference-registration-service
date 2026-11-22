@@ -3,5 +3,6 @@ max-line-length = 120
 exclude =
     .git,
     venv,
-    .venv
+    .venv,
+    migrations
 ignore = W503

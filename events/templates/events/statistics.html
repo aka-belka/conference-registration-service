@@ -1,13 +1,27 @@
 {% extends "base.html" %}
+
 {% block title %}
     Статистика – Сервис регистрации
 {% endblock %}
+
 {% block content %}
     <h1>Статистика по билетам</h1>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h2>Сводные показатели</h2>
+            <p>Всего билетов: {{ totals.total_tickets }}</p>
+            <p>Средняя вместимость мероприятий: {{ totals.avg_seats|floatformat:1 }}</p>
+            <p>Минимальная вместимость: {{ totals.min_seats }}</p>
+            <p>Максимальная вместимость: {{ totals.max_seats }}</p>
+            <p>Всего зарегистрировано: {{ total_registered }}</p>
+        </div>
+    </div>
+
     <ul class="list-group">
         {% for item in statistics %}
             <li class="list-group-item d-flex justify-content-between align-items-center">
-                {{ item.event_title }}
+                {{ item.title }}
                 <span class="badge bg-primary rounded-pill">{{ item.tickets_count }} шт.</span>
             </li>
         {% empty %}

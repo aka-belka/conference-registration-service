@@ -1,34 +1,22 @@
-import sqlite3
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 
-DB_PATH = "data/conference.sqlite"
+from .models import Participant
 
 
 def participants(request):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    participants_list = conn.execute("""
-        SELECT
-            id,
-            name,
-            email
-        FROM participants
-        ORDER BY name;
-    """).fetchall()
-    conn.close()
-    return render(request, "participants/participant_list.html", {"participants": participants_list})
+    participants_list = Participant.objects.all().order_by('name')
+    return render(
+        request,
+        "participants/participant_list.html",
+        {"participants": participants_list},
+    )
 
 
-def participant_detail(request, participant_id: int):
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    participant = conn.execute("""
-        SELECT
-            id,
-            name,
-            email
-        FROM participants
-        WHERE id = ?;
-    """, [participant_id]).fetchone()
-    conn.close()
-    return render(request, "participants/participant_detail.html", {"participant": participant})
+def participant_detail(request, participant_id):
+    participant = get_object_or_404(Participant, pk=participant_id)
+    tickets_list = participant.tickets.select_related('event').all()
+    context = {
+        "participant": participant,
+        "tickets": tickets_list,
+    }
+    return render(request, "participants/participant_detail.html", context)
