@@ -15,9 +15,12 @@ def events(request):
 def event_detail(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
     tickets_list = event.tickets.select_related('participant').all()
+    registered = event.tickets.exclude(status='отменён').count()
+    free_seats = event.max_seats - registered
     context = {
         "event": event,
         "tickets": tickets_list,
+        "free_seats": free_seats,
     }
     return render(request, "events/event_detail.html", context)
 
@@ -71,9 +74,7 @@ def statistics(request):
         min_seats=Min('event__max_seats'),
         max_seats=Max('event__max_seats'),
     )
-    total_registered = Event.objects.aggregate(
-        total=Sum('registered')
-    )['total'] or 0
+    total_registered = Ticket.objects.exclude(status='отменён').count()   # 5
 
     events_short = Event.objects.values('id', 'title', 'date').order_by('date')
 
@@ -110,7 +111,10 @@ def active_tickets(request):
         .select_related('event', 'participant')
         .order_by('-id')
     )
-    return render(request, "events/tickets.html", {"tickets": active})
+    return render(request, "events/tickets.html", {
+        "tickets": active,
+        "active_only": True,
+    })
 
 
 def tickets_by_event_status(request):
@@ -122,16 +126,14 @@ def tickets_by_event_status(request):
         qs = qs.filter(event__title__icontains=event_title)
     if status in dict(Ticket.STATUS_CHOICES):
         qs = qs.filter(status=status)
-
     qs = qs.order_by('event__date', 'participant__name')
 
-    context = {
+    return render(request, "events/tickets.html", {
         "tickets": qs,
         "event_title": event_title,
         "status": status,
         "statuses": Ticket.STATUS_CHOICES,
-    }
-    return render(request, "events/tickets.html", context)
+    })
 
 
 def participants_search(request):

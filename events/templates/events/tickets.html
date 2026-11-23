@@ -7,6 +7,33 @@
 {% block content %}
     <h1>Билеты</h1>
 
+    {% if active_only %}
+        <p class="text-muted">Показаны только активные билеты (без отменённых).</p>
+    {% endif %}
+
+    {% if statuses %}
+        <form method="get" class="mb-3 row g-2">
+            <div class="col-md-5">
+                <input type="text" name="event" value="{{ event_title }}"
+                       class="form-control" placeholder="Название мероприятия">
+            </div>
+            <div class="col-md-4">
+                <select name="status" class="form-select">
+                    <option value="">Все статусы</option>
+                    {% for value, label in statuses %}
+                        <option value="{{ value }}" {% if status == value %}selected{% endif %}>
+                            {{ label }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-primary">Найти</button>
+                <a href="{% url 'events:tickets_by_event_status' %}" class="btn btn-outline-secondary">Сбросить</a>
+            </div>
+        </form>
+    {% endif %}
+
     <p>Всего билетов: {{ tickets|length }}</p>
 
     <ul class="list-group">
@@ -26,11 +53,13 @@
     {% if page_obj %}
         <nav class="mt-3">
             {% if page_obj.has_previous %}
-                <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if status %}&status={{ status }}{% endif %}">← Назад</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if status %}&status={{ status }}{% endif %}"
+                   class="btn btn-outline-secondary">← Назад</a>
             {% endif %}
             <span>Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
             {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}" class="btn btn-outline-secondary">Вперёд →</a>
+                <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if status %}&status={{ status }}{% endif %}"
+                   class="btn btn-outline-secondary">Вперёд →</a>
             {% endif %}
         </nav>
     {% endif %}

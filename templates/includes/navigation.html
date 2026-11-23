@@ -1,8 +1,27 @@
-<nav class="nav bg-light px-3 py-2">
+<li class="nav-item">
     <a class="nav-link" href="{% url 'homepage:index' %}">Главная</a>
+</li>
+<li class="nav-item">
     <a class="nav-link" href="{% url 'participants:participants' %}">Участники</a>
+</li>
+<li class="nav-item">
     <a class="nav-link" href="{% url 'events:events' %}">Мероприятия</a>
-    <a class="nav-link" href="{% url 'tickets' %}">Билеты</a>
+</li>
+<li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" role="button"
+       data-bs-toggle="dropdown" aria-expanded="false">
+        Билеты
+    </a>
+    <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="{% url 'tickets' %}">Все билеты</a></li>
+        <li><a class="dropdown-item" href="{% url 'events:tickets_paginated' %}">С пагинацией</a></li>
+        <li><a class="dropdown-item" href="{% url 'events:tickets_active' %}">Активные</a></li>
+        <li><a class="dropdown-item" href="{% url 'events:tickets_by_event_status' %}">Фильтр по мероприятию и статусу</a></li>
+    </ul>
+</li>
+<li class="nav-item">
     <a class="nav-link" href="{% url 'events:search_events' %}">Поиск по дате</a>
+</li>
+<li class="nav-item">
     <a class="nav-link" href="{% url 'events:statistics' %}">Статистика</a>
-</nav>
+</li>
