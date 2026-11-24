@@ -1,28 +1,78 @@
 from datetime import datetime
 
 from django.core.paginator import Paginator
-from django.db.models import Avg, Count, Max, Min, Q, Sum
+from django.db.models import Avg, Count, F, Max, Min, Q
 from django.shortcuts import get_object_or_404, render
 
-from .models import Event, Ticket
+from events.models import Event, Ticket
+from participants.models import Participant
 
 
 def events(request):
-    events_list = Event.objects.all().order_by('date')
-    return render(request, "events/event_list.html", {"events": events_list})
+    events_list = (
+        Event.objects
+        .annotate(
+            registered_count=Count(
+                'tickets',
+                filter=~Q(
+                    tickets__status=Ticket.Status.CANCELLED
+                ),
+            )
+        )
+        .annotate(
+            free_seats=F('max_seats') - F('registered_count')
+        )
+        .order_by('date', 'title')
+    )
+
+    paginator = Paginator(events_list, 5)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    return render(
+        request,
+        "events/event_list.html",
+        {
+            "events": page_obj.object_list,
+            "page_obj": page_obj,
+        }
+    )
 
 
 def event_detail(request, event_id):
-    event = get_object_or_404(Event, pk=event_id)
-    tickets_list = event.tickets.select_related('participant').all()
-    registered = event.tickets.exclude(status='отменён').count()
-    free_seats = event.max_seats - registered
+    event = get_object_or_404(
+        Event.objects.annotate(
+            registered_count=Count(
+                'tickets',
+                filter=~Q(
+                    tickets__status=Ticket.Status.CANCELLED
+                ),
+            )
+        ).annotate(
+            free_seats=F('max_seats') - F('registered_count')
+        ),
+        pk=event_id,
+    )
+
+    tickets_list = (
+        Ticket.objects
+        .active()
+        .for_event(event.id)
+        .select_related('participant', 'event')
+        .order_by('number')
+    )
+
     context = {
         "event": event,
         "tickets": tickets_list,
-        "free_seats": free_seats,
+        "free_seats": event.free_seats,
     }
-    return render(request, "events/event_detail.html", context)
+
+    return render(
+        request,
+        "events/event_detail.html",
+        context
+    )
 
 
 def tickets(request):
@@ -31,122 +81,220 @@ def tickets(request):
         .select_related('event', 'participant')
         .all()
     )
-    return render(request, "events/tickets.html", {"tickets": tickets_list})
+
+    return render(
+        request,
+        "events/tickets.html",
+        {"tickets": tickets_list}
+    )
 
 
 def search_events(request):
     query = request.GET.get("q", "").strip()
     date_str = request.GET.get("date", "").strip()
+
     error = None
-    events_list = Event.objects.all()
+
+    events_list = Event.objects.annotate(
+        registered_count=Count(
+            'tickets',
+            filter=~Q(
+                tickets__status=Ticket.Status.CANCELLED
+            ),
+        )
+    ).annotate(
+        free_seats=F('max_seats') - F('registered_count')
+    )
 
     if query:
-        events_list = events_list.filter(title__icontains=query)
+        events_list = events_list.filter(
+            title__icontains=query
+        )
 
     if date_str:
         try:
-            selected_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+            selected_date = datetime.strptime(
+                date_str,
+                "%Y-%m-%d"
+            ).date()
+
         except ValueError:
             error = "Укажите корректную дату в формате YYYY-MM-DD."
+
         else:
-            events_list = events_list.filter(date=selected_date)
+            events_list = events_list.filter(
+                date=selected_date
+            )
 
     events_list = events_list.order_by('date', 'title')
 
+    paginator = Paginator(events_list, 5)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
     context = {
-        "events": events_list,
+        "events": page_obj.object_list,
+        "page_obj": page_obj,
         "search_date": date_str,
         "query": query,
         "error": error,
     }
-    return render(request, "events/search.html", context)
+
+    return render(
+        request,
+        "events/search.html",
+        context
+    )
 
 
 def statistics(request):
     stats = (
         Event.objects
-        .annotate(tickets_count=Count('tickets'))
+        .annotate(
+            tickets_count=Count(
+                'tickets',
+                filter=~Q(
+                    tickets__status=Ticket.Status.CANCELLED
+                ),
+            ),
+            booked_count=Count(
+                'tickets',
+                filter=Q(
+                    tickets__status=Ticket.Status.BOOKED
+                ),
+            ),
+            paid_count=Count(
+                'tickets',
+                filter=Q(
+                    tickets__status=Ticket.Status.PAID
+                ),
+            ),
+            cancelled_count=Count(
+                'tickets',
+                filter=Q(
+                    tickets__status=Ticket.Status.CANCELLED
+                ),
+            ),
+        )
         .order_by('-tickets_count')
     )
+
     totals = Ticket.objects.aggregate(
         total_tickets=Count('id'),
+        booked_tickets=Count(
+            'id',
+            filter=Q(status=Ticket.Status.BOOKED)
+        ),
+        paid_tickets=Count(
+            'id',
+            filter=Q(status=Ticket.Status.PAID)
+        ),
+        cancelled_tickets=Count(
+            'id',
+            filter=Q(status=Ticket.Status.CANCELLED)
+        ),
         avg_seats=Avg('event__max_seats'),
         min_seats=Min('event__max_seats'),
         max_seats=Max('event__max_seats'),
     )
-    total_registered = Ticket.objects.exclude(status='отменён').count()   # 5
 
-    events_short = Event.objects.values('id', 'title', 'date').order_by('date')
+    total_registered = Ticket.objects.active().count()
+
+    events_short = (
+        Event.objects
+        .values('id', 'title', 'date')
+        .order_by('date')
+    )
 
     context = {
         "statistics": stats,
         "totals": totals,
         "total_registered": total_registered,
-        "events_short": events_short
+        "events_short": events_short,
     }
-    return render(request, "events/statistics.html", context)
+
+    return render(
+        request,
+        "events/statistics.html",
+        context
+    )
 
 
 def tickets_paginated(request):
+    status = request.GET.get('status', '').strip()
+    event_id = request.GET.get('event', '').strip()
+    ordering = request.GET.get('ordering', 'number').strip()
+
+    allowed_ordering = {
+        'number',
+        '-number',
+        'event__date',
+        '-event__date',
+        'participant__name',
+        '-participant__name',
+    }
+
+    if ordering not in allowed_ordering:
+        ordering = 'number'
+
     tickets_qs = (
         Ticket.objects
         .select_related('event', 'participant')
-        .order_by('number')
     )
+
+    if status in Ticket.Status.values:
+        tickets_qs = tickets_qs.filter(status=status)
+
+    if event_id.isdigit():
+        tickets_qs = tickets_qs.filter(event_id=int(event_id))
+
+    tickets_qs = tickets_qs.order_by(ordering)
+
     paginator = Paginator(tickets_qs, 5)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
+
+    context = {
+        "page_obj": page_obj,
+        "tickets": page_obj.object_list,
+        "status": status,
+        "event_id": event_id,
+        "ordering": ordering,
+        "statuses": Ticket.Status.choices,
+        "events": Event.objects.all(),
+    }
+
     return render(
         request,
         "events/tickets.html",
-        {"page_obj": page_obj, "tickets": page_obj.object_list},
+        context
     )
-
-
-def active_tickets(request):
-    active = (
-        Ticket.objects
-        .exclude(status='отменён')
-        .filter(status__in=['забронирован', 'оплачен'])
-        .select_related('event', 'participant')
-        .order_by('-id')
-    )
-    return render(request, "events/tickets.html", {
-        "tickets": active,
-        "active_only": True,
-    })
-
-
-def tickets_by_event_status(request):
-    event_title = request.GET.get('event', '').strip()
-    status = request.GET.get('status', '').strip()
-
-    qs = Ticket.objects.select_related('event', 'participant')
-    if event_title:
-        qs = qs.filter(event__title__icontains=event_title)
-    if status in dict(Ticket.STATUS_CHOICES):
-        qs = qs.filter(status=status)
-    qs = qs.order_by('event__date', 'participant__name')
-
-    return render(request, "events/tickets.html", {
-        "tickets": qs,
-        "event_title": event_title,
-        "status": status,
-        "statuses": Ticket.STATUS_CHOICES,
-    })
 
 
 def participants_search(request):
-    from participants.models import Participant
     query = request.GET.get('q', '').strip()
+
     participants_list = Participant.objects.all()
+
     if query:
         participants_list = participants_list.filter(
-            Q(name__icontains=query) | Q(email__icontains=query)
+            Q(name__icontains=query)
+            | Q(email__icontains=query)
         )
+
     participants_list = participants_list.order_by('name')
+
+    paginator = Paginator(participants_list, 10)
+    page_obj = paginator.get_page(
+        request.GET.get('page', 1)
+    )
+
     return render(
         request,
         "participants/participant_list.html",
-        {"participants": participants_list, "query": query},
+        {
+            "participants": page_obj.object_list,
+            "page_obj": page_obj,
+            "query": query,
+        }
     )

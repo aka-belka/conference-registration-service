@@ -27,6 +27,9 @@
         <ul class="list-group">
             {% for event in events %}
                 <li class="list-group-item">{{ event.title }} (Мест: {{ event.max_seats }})</li>
+                <p>
+                    Зарегистрировано: {{ event.registered_count }} / {{ event.max_seats }}
+                </p>
             {% empty %}
                 <li class="list-group-item">Ничего не найдено.</li>
             {% endfor %}

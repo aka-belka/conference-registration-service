@@ -11,7 +11,10 @@
         <p class="card-text">
             Вместимость: {{ event.max_seats }} мест
         </p>
-
+        
+        <p>
+            Зарегистрировано: {{ event.registered_count }} / {{ event.max_seats }}
+        </p>
         <a
             href="{% url 'events:event_detail' event.id %}"
             class="btn btn-primary"
