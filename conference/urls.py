@@ -12,6 +12,9 @@ urlpatterns = [
     path("participants/", include("participants.urls")),
     path("events/", include("events.urls")),
     path("tickets/", events_views.tickets_paginated, name="tickets"),
+    path("tickets/create/", events_views.ticket_create, name="ticket_create"),
+    path("tickets/<int:ticket_id>/edit/", events_views.ticket_update, name="ticket_update"),
+    path("tickets/<int:ticket_id>/cancel/", events_views.ticket_cancel, name="ticket_cancel"),
 ]
 
 

@@ -2,10 +2,13 @@ from datetime import datetime
 
 from django.core.paginator import Paginator
 from django.db.models import Avg, Count, F, Max, Min, Q
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from events.models import Event, Ticket
 from participants.models import Participant
+from django.views.decorators.http import require_POST, require_http_methods
+
+from .forms import TicketFilterForm, TicketForm
 
 
 def events(request):
@@ -221,47 +224,59 @@ def statistics(request):
 
 
 def tickets_paginated(request):
-    status = request.GET.get('status', '').strip()
-    event_id = request.GET.get('event', '').strip()
-    ordering = request.GET.get('ordering', 'number').strip()
-
-    allowed_ordering = {
-        'number',
-        '-number',
-        'event__date',
-        '-event__date',
-        'participant__name',
-        '-participant__name',
-    }
-
-    if ordering not in allowed_ordering:
-        ordering = 'number'
+    form = TicketFilterForm(request.GET or None)
 
     tickets_qs = (
         Ticket.objects
-        .select_related('event', 'participant')
+        .select_related("event", "participant")
     )
 
-    if status in Ticket.Status.values:
-        tickets_qs = tickets_qs.filter(status=status)
+    if form.is_valid():
+        event = form.cleaned_data.get("event")
+        status = form.cleaned_data.get("status")
+        event_date = form.cleaned_data.get("event_date")
+        ordering = form.cleaned_data.get("ordering") or "number"
 
-    if event_id.isdigit():
-        tickets_qs = tickets_qs.filter(event_id=int(event_id))
+        if event:
+            tickets_qs = tickets_qs.filter(event=event)
 
-    tickets_qs = tickets_qs.order_by(ordering)
+        if status:
+            tickets_qs = tickets_qs.filter(status=status)
+
+        if event_date:
+            tickets_qs = tickets_qs.filter(
+                event__date=event_date
+            )
+
+        allowed_ordering = {
+            "number",
+            "-number",
+            "event__date",
+            "-event__date",
+            "participant__name",
+            "-participant__name",
+        }
+
+        if ordering not in allowed_ordering:
+            ordering = "number"
+
+        tickets_qs = tickets_qs.order_by(ordering)
 
     paginator = Paginator(tickets_qs, 5)
-    page_number = request.GET.get('page', 1)
-    page_obj = paginator.get_page(page_number)
+
+    page_obj = paginator.get_page(
+        request.GET.get("page", 1)
+    )
+
+    query_params = request.GET.copy()
+    query_params.pop("page", None)
+    query_string = query_params.urlencode()
 
     context = {
+        "form": form,
         "page_obj": page_obj,
         "tickets": page_obj.object_list,
-        "status": status,
-        "event_id": event_id,
-        "ordering": ordering,
-        "statuses": Ticket.Status.choices,
-        "events": Event.objects.all(),
+        "query_string": query_string,
     }
 
     return render(
@@ -269,6 +284,75 @@ def tickets_paginated(request):
         "events/tickets.html",
         context
     )
+
+
+@require_http_methods(["GET", "POST"])
+def ticket_create(request):
+    if request.method == "POST":
+        form = TicketForm(request.POST)
+
+        if form.is_valid():
+            form.save()
+            return redirect("tickets")
+
+    else:
+        form = TicketForm()
+
+    return render(
+        request,
+        "events/ticket_form.html",
+        {
+            "form": form,
+            "title": "Создание билета",
+            "button_text": "Создать билет",
+        }
+    )
+
+
+@require_http_methods(["GET", "POST"])
+def ticket_update(request, ticket_id):
+    ticket = get_object_or_404(
+        Ticket,
+        pk=ticket_id
+    )
+
+    if request.method == "POST":
+        form = TicketForm(
+            request.POST,
+            instance=ticket
+        )
+
+        if form.is_valid():
+            form.save()
+            return redirect("tickets")
+
+    else:
+        form = TicketForm(instance=ticket)
+
+    return render(
+        request,
+        "events/ticket_form.html",
+        {
+            "form": form,
+            "title": "Редактирование билета",
+            "button_text": "Сохранить изменения",
+            "ticket": ticket,
+        }
+    )
+
+
+@require_POST
+def ticket_cancel(request, ticket_id):
+    ticket = get_object_or_404(
+        Ticket,
+        pk=ticket_id
+    )
+
+    if ticket.status != Ticket.Status.CANCELLED:
+        ticket.status = Ticket.Status.CANCELLED
+        ticket.save(update_fields=["status"])
+
+    return redirect("tickets")
 
 
 def participants_search(request):
