@@ -22,8 +22,8 @@ INSTALLED_APPS = [
     "debug_toolbar",
 
     "homepage",
-    "participants",
-    "events",
+    "events.apps.EventsConfig",
+    "participants.apps.ParticipantsConfig",
 ]
 
 MIDDLEWARE = [
