@@ -8,6 +8,7 @@ from participants.models import Participant
 
 pytestmark = pytest.mark.django_db
 
+
 @pytest.fixture
 def event(db):
     return Event.objects.create(
